@@ -38,11 +38,12 @@ response = requests.get(
     verify=False,
 )
 
-soup = BeautifulSoup(response.content, 'html.parser')
+soup = BeautifulSoup(response.text, 'html.parser')
 
-data = soup.select_one('body > table > tbody > tr:nth-child(3) > td > form > table:nth-child(4) > tbody > tr:nth-child(3) > td:nth-child(3) > div').text
+data = soup.select('body > table > tr:nth-child(3) > td > form > table:nth-child(4) div')
 
-print(data)
+for tag in data:
+    print(tag.contents)
 
 # options = webdriver.ChromeOptions()
 # options.add_argument('--headless')
