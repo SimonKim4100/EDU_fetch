@@ -9,4 +9,4 @@ HTML_FETCH.py is the base python file for creating the HTML_FETCH.exe.
 4. Extracted data is then sent to the excel file(소견서.xlsx) and is copied as 완성소견서.xlsx.
 
 ## Copyrights and License
-HTML_FETCH.py DOES NOT have access to Livedu ERP site without user cookies. Therefore, the program itself has no conflict with webpage copyrights or licenses.
+HTML_FETCH.py DOES NOT have access to Livedu ERP database without user cookies. Therefore, the program itself has no conflict with webpage copyrights or licenses.
