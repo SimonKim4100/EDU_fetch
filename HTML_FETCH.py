@@ -176,13 +176,22 @@ total_time = len(dates) * 60
 def remove_duplicates(lst):
     return list(dict.fromkeys(lst))
 
+# Find indices to remove for hw_a because it has multiple duplicates
+seen = set()
+indices_to_remove = []
+for i, (num1, num2, num3, num4, num5) in enumerate(zip(dates, study, class_content, homework, hw_achievement)):
+    if num1 in seen:
+        indices_to_remove.append(i)
+    else:
+        seen.add(num1)
 
 # Remove all duplicates
-dates = remove_duplicates(dates)
-study = remove_duplicates(study)
-class_content = remove_duplicates(class_content)
-homework = remove_duplicates(homework)
-hw_achievement = remove_duplicates(hw_achievement)
+for index in reversed(indices_to_remove):
+    del dates[index]
+    del study[index]
+    del class_content[index]
+    del homework[index]
+    del hw_achievement[index]
 
 # 월말보고서 불러오기, 완성된 엑셀은 '완성소견서'
 shutil.copy("소견서.xlsx", "완성소견서.xlsx")
