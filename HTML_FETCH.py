@@ -1,103 +1,120 @@
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 import os
 import shutil
 from openpyxl import load_workbook
 import requests
 import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-input_curl = []
+# Log-in Info
+print("입력 후 엔터 눌러주세요!\n")
+username = input("아이디: ")
+password = input("비밀번호: ")
+student_name_input = input("학생 이름: ")
 
-# chromedriver 찾기
-driver_directory = os.path.dirname(os.path.abspath(__file__))
-
-# 나중에 쓸 class_time 변수
-class_time = input("해당 학생은 하루에 총 몇 시간 수업하나요?(시간 단위로 입력해주세요):\n")
-
-print("cURL을 입력하고 엔터를 두번 눌러주세요:")
-
-while True:
-    line = input()
-    if line == "":
-        break
-    input_curl.append(line)
-
-input_curl = '\n'.join(input_curl)
-
-# translated_output에 있는 변수 사전 생성(이후 에러 생겨서 미리 생성)
-response = ()
-cookies = {}
-headers = {}
-
-# 로딩 오래 걸려서 로딩중
+# Loading takes some time
 print("로딩중...")
 
+# Find chromedriver
+driver_directory = os.path.dirname(os.path.abspath(__file__))
 webdriver_path = "r'" + driver_directory + "'"
 
-# 컬 to 파이썬 컨버터(웹페이지)에서 변환기 가져오기
-url = 'https://curlconverter.com/'
+# Replace these with the URL of the login page and your login credentials
+login_url = 'http://erp.livedu.co/manage/bbs/login.php?url=%2Fmanage%2Findex.php%3F'
 
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+# Create a new instance of the Chrome web driver
+driver = webdriver.Chrome()
 
-driver.get(url)
+# Navigate to the login page
+driver.get(login_url)
 
-input_box = driver.find_element(By.ID, 'curl-code')
-output_box = driver.find_element(By.ID, 'generated-code')
+# Find the username and password input fields and fill them in
+username_input = driver.find_element(By.ID, 'user_id')  # Replace with the actual ID of the username input field
+password_input = driver.find_element(By.ID, 'password')  # Replace with the actual ID of the password input field
+checkbox = driver.find_element(By.ID, 'login_section_T')
+username_input.send_keys(username)
+password_input.send_keys(password)
+checkbox.click()
 
-input_box.send_keys(input_curl)
+# Find and click the login button
+login_button = driver.find_element(By.CSS_SELECTOR, '#body > form > div > div.login > input')  # Replace with the
+# actual ID of the login button
+login_button.click()
 
-translated_output = output_box.text
+# Wait for the page to load (you might need to adjust this wait time)
+driver.implicitly_wait(10)
 
-# 출력된 translated_output: cookies={} header={} param={}
-try:
-    exec(translated_output)
-except Exception as e:
-    print("Error", e)
+# Get the cookies and headers from the current page
+cookies_driver = driver.get_cookies()
+cookies = {cookie['name']: cookie['value'] for cookie in cookies_driver}
 
-# 수업 내용 호출을 위한 soup
-soup_class = BeautifulSoup(response.text, 'html.parser')
+# Get student info via chromedriver
+# Initial request for student info
+student_url = 'http://erp.livedu.co/manage/student/student.php'
+driver.get(student_url)
 
-# 학생 정보 호출을 위한 header 및 response 변경
-new_url = headers['Referer']
-new_referer = 'http://erp.livedu.co/manage/student/student.php'
+# Find link to left side student name button
+link_element = driver.find_element(By.XPATH, f"//a[text()='{student_name_input}']")
+onclick_attribute = link_element.get_attribute('onclick')
+student_id = onclick_attribute.split("viewStudentInfo('")[1].split("')")[0]
+link_element.click()
 
-headers['Referer'] = new_referer
-
-# 학생 정보 호출
-new_response = requests.get(
-    new_url,
-    cookies=cookies,
-    headers=headers,
-    verify=False,
+# Student phone number
+time.sleep(1)
+student_phone_1 = WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.ID, "st_hp1"))
 )
+first = student_phone_1.get_attribute('value')
+student_phone_2 = driver.find_element(By.ID, 'st_hp2')
+second = student_phone_2.get_attribute('value')
+student_phone_3 = driver.find_element(By.ID, 'st_hp3')
+third = student_phone_3.get_attribute('value')
+student_phone = first + second + third
 
-# 학생 정보를 위한 soup
-soup_student = BeautifulSoup(new_response.text, 'html.parser')
+# Student gender
+student_gender_check = driver.find_element(By.CSS_SELECTOR, 'input[type="radio"][name="st_sex"][value="F"]')
+if student_gender_check.get_attribute('checked') == 'true':
+    student_gender = '여'
+else:
+    student_gender = '남'
+
+# Student school
+xpath = f"//a[text()='{student_name_input}']"
+student_school_path = xpath + "/../../../td[4]"
+student_school_element = driver.find_element(By.XPATH, student_school_path)
+student_school = student_school_element.text
+
+# Student grade
+grade_option = driver.find_element(By.CSS_SELECTOR, 'select[name="st_grade"] option[selected]')
+grade_option_content = grade_option.text
+
+# Student major
+try:
+    major_option = driver.find_element(By.CSS_SELECTOR, 'select[name="st_class"] option[selected]')
+    option_elements = major_option.find_elements(By.TAG_NAME, "option")
+    major_option_content = major_option.text
+
+except Exception as e:
+    major_option_content = "없음"
+
+# Second request for class info
+class_url = 'http://erp.livedu.co/manage/student/student_info.inc_attendance.php?st_no=' + student_id + '\''
+
+response = requests.get(class_url, cookies=cookies, verify=False)
+
+# Soup for class content
+soup_class = BeautifulSoup(response.text, 'html.parser')
 
 driver.quit()
 
 data_class = soup_class.select('body > table > tr:nth-child(3) > td > form > table:nth-child(4) div')
-data_student = soup_student.select('body > table > tr:nth-child(3) > td > form > table div')
 
-# 읽는 그대로
-student_name = []
-teacher_name = []
-student_grade = []
-student_subject = []
-
-for index_student, tag_student in enumerate(data_student[14:], 1):
-    if index_student == 3:
-        student_subject.append(tag_student.contents[0])
-    if index_student == 4:
-        student_name.append(tag_student.contents[0])
-    if index_student == 6:
-        student_grade.append(tag_student.contents[0])
-
+# Pre-create items
+student_subject = None
+teacher_name = None
 dates = []  # 수업 일자
 class_content = []  # 수업 범위
 homework = []  # 숙제 범위
@@ -105,17 +122,20 @@ hw_achievement = []  # 숙제 달성도
 study = []  # 수업 소견
 
 for index, tag in enumerate(data_class[11:], 1):
-    if index == 3:
-        teacher_name.append(tag.contents[0])
+    if index == 2:
+        student_subject = tag.contents[0]
 
-    if index % (11 * int(class_time)) == 4:
+    if index == 3:
+        teacher_name = tag.contents[0]
+
+    if index % 11 == 4:
         dates.append(tag.contents[0])
 
-    if index % (11 * int(class_time)) == 0 and index > 21:
+    if index % 11 == 0 and index > 21:
         study.append(tag.contents[10][18:])
-    if index % (11 * int(class_time)) == 0 and index > 21:
+    if index % 11 == 0 and index > 21:
         homework.append(tag.contents[8][12:])
-    if index % (11 * int(class_time)) == 0 and index > 21:
+    if index % 11 == 0 and index > 21:
         hw_achievement.append(tag.contents[6][17:])
 
     if index == 11:  # 첫줄만 에러 떠서 별도 지정
@@ -127,7 +147,7 @@ for index, tag in enumerate(data_class[11:], 1):
         z = inner.splitlines()[3]  # 숙제 달성도
         hw_achievement.append(z[15:])
 
-    if index % (11 * int(class_time)) == 10:
+    if index % 11 == 10:
         class_content.append(tag.contents[0])
 
 dates.reverse()
@@ -136,8 +156,33 @@ class_content.reverse()
 homework.reverse()
 hw_achievement.reverse()
 
-# 총 수업 시간
-total_time = len(dates) * int(class_time) * 60
+
+# Duplicate finder, true if duplicate exists
+def has_duplicates(lst):
+    return len(lst) != len(set(lst))
+
+
+# If duplicate exists, class time is 2hrs
+if has_duplicates(dates):
+    class_time = 2
+else:
+    class_time = 1
+
+# Total class time
+total_time = len(dates) * 60
+
+
+# Remove duplicates
+def remove_duplicates(lst):
+    return list(dict.fromkeys(lst))
+
+
+# Remove all duplicates
+dates = remove_duplicates(dates)
+study = remove_duplicates(study)
+class_content = remove_duplicates(class_content)
+homework = remove_duplicates(homework)
+hw_achievement = remove_duplicates(hw_achievement)
 
 # 월말보고서 불러오기, 완성된 엑셀은 '완성소견서'
 shutil.copy("소견서.xlsx", "완성소견서.xlsx")
@@ -148,29 +193,33 @@ workbook = load_workbook(filename=file_source)
 ws = workbook["월말소견서"]
 
 
-# 입력기 함수
+# Inserting function
 def enter_cell(a, b, component):
     ws.cell(row=a, column=b).value = component
 
 
-# 총 수업시간 입력
+# Total class time
 enter_cell(12, 12, str(total_time))
-# 학생 이름, 학년, 선생님 이름, 과목 입력
-enter_cell(6, 2, student_name[0])
-enter_cell(6, 12, student_grade[0])
-enter_cell(12, 2, teacher_name[0])
-enter_cell(12, 3, student_subject[0])
+# 학생 이름, 학년, 선생님 이름, 과목
+enter_cell(6, 2, student_name_input)
+enter_cell(6, 3, student_gender)
+enter_cell(6, 5, student_school)
+enter_cell(6, 12, grade_option_content)
+enter_cell(6, 14, major_option_content)
+enter_cell(6, 18, student_phone)
+enter_cell(12, 2, teacher_name)
+enter_cell(12, 3, student_subject)
 
-# 나머지 입력, count에 따라 순서대로
+# Insert remaining data according to count
 count = 0
 while count < len(dates):
-    count_a = int(17+7*count)
+    count_a = int(17 + 7 * count)
     enter_cell(count_a, 2, dates[count])
-    enter_cell(count_a, 3, int(class_time)*60)
+    enter_cell(count_a, 3, int(class_time) * 60)
     enter_cell(count_a, 5, class_content[count])
     enter_cell(count_a, 16, hw_achievement[count])
-    enter_cell(count_a+2, 3, homework[count])
-    enter_cell(count_a+4, 3, study[count])
+    enter_cell(count_a + 2, 3, homework[count])
+    enter_cell(count_a + 4, 3, study[count])
     count += 1
 
 workbook.save(filename=file_source)
