@@ -12,4 +12,4 @@ HTML_FETCH.py is the base python file for creating the HTML_FETCH.exe.
 HTML_FETCH.exe uses chromedriver and excel file. Directories are set as the same folder as the exe file. Therefore, if you move/remove chromedriver or the excel file from the folder, you will get errors.
 
 ## Copyrights and License
-HTML_FETCH.py DOES NOT have access to Livedu ERP database without user cookies. Therefore, the program itself has no conflict with webpage copyrights or licenses.
+HTML_FETCH.py DOES NOT have access to ERP database without user cookies. Therefore, the program itself has no conflict with webpage copyrights or licenses.
