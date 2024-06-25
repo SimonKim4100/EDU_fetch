@@ -1,5 +1,5 @@
 # EDU_fetch
-A HTML crawling program for Livedu(라이브에듀) Academy
+A HTML crawling program for a certain academy.
 
 ## Contents Explained
 HTML_FETCH.py is the base python file for creating the HTML_FETCH.exe.
